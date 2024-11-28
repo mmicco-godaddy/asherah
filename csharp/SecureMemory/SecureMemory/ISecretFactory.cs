@@ -1,11 +1,10 @@
 using System;
 
-namespace GoDaddy.Asherah.SecureMemory
-{
-    public interface ISecretFactory : IDisposable
-    {
-        Secret CreateSecret(byte[] secretData);
+namespace GoDaddy.Asherah.SecureMemory;
 
-        Secret CreateSecret(char[] secretData);
-    }
+public interface ISecretFactory : IDisposable
+{
+    Secret CreateSecret(byte[] secretData);
+
+    Secret CreateSecret(char[] secretData);
 }

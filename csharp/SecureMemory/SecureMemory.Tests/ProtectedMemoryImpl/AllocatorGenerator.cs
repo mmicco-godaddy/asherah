@@ -7,49 +7,49 @@ using GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.MacOS;
 using GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.Windows;
 using Microsoft.Extensions.Configuration;
 
-namespace GoDaddy.Asherah.SecureMemory.Tests.ProtectedMemoryImpl
+namespace GoDaddy.Asherah.SecureMemory.Tests.ProtectedMemoryImpl;
+
+[ExcludeFromCodeCoverage]
+public class AllocatorGenerator : IEnumerable<object[]>, IDisposable
 {
-    public class AllocatorGenerator : IEnumerable<object[]>, IDisposable
+    private readonly List<object[]> allocators;
+
+    public AllocatorGenerator()
     {
-        private readonly List<object[]> allocators;
-
-        public AllocatorGenerator()
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
         {
-            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
-            {
-                {"heapSize", "32000"},
-                {"minimumAllocationSize", "128"},
-            }).Build();
+            {"heapSize", "32000"},
+            {"minimumAllocationSize", "128"},
+        }).Build();
 
-            allocators = new List<object[]>();
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                allocators.Add(new object[] { new MacOSProtectedMemoryAllocatorLP64() });
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                if (LinuxOpenSSL11ProtectedMemoryAllocatorLP64.IsAvailable())
-                {
-                    allocators.Add(new object[] { new LinuxOpenSSL11ProtectedMemoryAllocatorLP64(configuration) });
-                }
-                allocators.Add(new object[] { new LinuxProtectedMemoryAllocatorLP64() });
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                allocators.Add(new object[] { new WindowsProtectedMemoryAllocatorVirtualAlloc(configuration) });
-            }
-        }
-
-        public void Dispose()
+        allocators = new List<object[]>();
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            foreach (var objArray in allocators)
-            {
-                ((IDisposable)objArray[0]).Dispose();
-            }
+            allocators.Add(new object[] { new MacOSProtectedMemoryAllocatorLP64() });
         }
-
-        public IEnumerator<object[]> GetEnumerator() => allocators.GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            if (LinuxOpenSSL11ProtectedMemoryAllocatorLP64.IsAvailable())
+            {
+                allocators.Add(new object[] { new LinuxOpenSSL11ProtectedMemoryAllocatorLP64(configuration) });
+            }
+            allocators.Add(new object[] { new LinuxProtectedMemoryAllocatorLP64() });
+        }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            allocators.Add(new object[] { new WindowsProtectedMemoryAllocatorVirtualAlloc(configuration) });
+        }
     }
+
+    public void Dispose()
+    {
+        foreach (var objArray in allocators)
+        {
+            ((IDisposable)objArray[0]).Dispose();
+        }
+    }
+
+    public IEnumerator<object[]> GetEnumerator() => allocators.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

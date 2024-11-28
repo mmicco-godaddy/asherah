@@ -2,39 +2,38 @@ using System.Diagnostics;
 using System.IO;
 using Microsoft.Extensions.Configuration;
 
-namespace GoDaddy.Asherah.SecureMemory
+namespace GoDaddy.Asherah.SecureMemory;
+
+public class TransientSecretFactory : ISecretFactory
 {
-    public class TransientSecretFactory : ISecretFactory
+    private readonly ISecretFactory secretFactory;
+
+    public TransientSecretFactory(IConfiguration configuration = null)
     {
-        private readonly ISecretFactory secretFactory;
-
-        public TransientSecretFactory(IConfiguration configuration = null)
+        if (configuration == null)
         {
-            if (configuration == null)
-            {
-                configuration = new ConfigurationBuilder()
-                    .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json", true).Build();
-            }
-
-            Debug.WriteLine("TransientSecretFactory: New");
-            secretFactory = new SecureMemorySecretFactory(configuration);
+            configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", true).Build();
         }
 
-        public void Dispose()
-        {
-            Debug.WriteLine("TransientSecretFactory: Dispose");
-            secretFactory.Dispose();
-        }
+        Debug.WriteLine("TransientSecretFactory: New");
+        secretFactory = new SecureMemorySecretFactory(configuration);
+    }
 
-        public Secret CreateSecret(byte[] secretData)
-        {
-            return secretFactory.CreateSecret(secretData);
-        }
+    public void Dispose()
+    {
+        Debug.WriteLine("TransientSecretFactory: Dispose");
+        secretFactory.Dispose();
+    }
 
-        public Secret CreateSecret(char[] secretData)
-        {
-            return secretFactory.CreateSecret(secretData);
-        }
+    public Secret CreateSecret(byte[] secretData)
+    {
+        return secretFactory.CreateSecret(secretData);
+    }
+
+    public Secret CreateSecret(char[] secretData)
+    {
+        return secretFactory.CreateSecret(secretData);
     }
 }

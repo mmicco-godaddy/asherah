@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <PackageId>GoDaddy.Asherah.SecureMemory</PackageId>
@@ -6,7 +6,7 @@
     <Authors>GoDaddy</Authors>
     <Company>GoDaddy</Company>
     <Description>Provides a secure area of memory to store sensitive data</Description>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>net9.0;net8.0;netstandard2.0</TargetFrameworks>
     <RootNamespace>GoDaddy.Asherah.SecureMemory</RootNamespace>
     <CodeAnalysisRuleSet>../StyleCopCustom.ruleset</CodeAnalysisRuleSet>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -16,23 +16,27 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0"/>
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0" />
-    <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="7.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="7.0.0" />
-    <PackageReference Include="System.Threading" Version="4.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.0"/>
+  </ItemGroup>
+
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0"/>
+    <PackageReference Include="System.Runtime.InteropServices" Version="4.3.0"/>
+    <PackageReference Include="System.Threading" Version="4.3.0"/>
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\PlatformNative\PlatformNative.csproj" />
+    <ProjectReference Include="..\PlatformNative\PlatformNative.csproj"/>
   </ItemGroup>
 
 </Project>

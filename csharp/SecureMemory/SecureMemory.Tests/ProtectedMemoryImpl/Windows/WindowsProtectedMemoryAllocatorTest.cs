@@ -4,82 +4,81 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.Windows;
 using Microsoft.Extensions.Configuration;
-using Xunit;
 
-namespace GoDaddy.Asherah.SecureMemory.Tests.ProtectedMemoryImpl.Windows
+namespace GoDaddy.Asherah.SecureMemory.Tests.ProtectedMemoryImpl.Windows;
+
+[ExcludeFromCodeCoverage]
+[Collection("Logger Fixture collection")]
+public class WindowsProtectedMemoryAllocatorTest : IDisposable
 {
-    [Collection("Logger Fixture collection")]
-    public class WindowsProtectedMemoryAllocatorTest : IDisposable
+    private readonly WindowsProtectedMemoryAllocatorLLP64 windowsProtectedMemoryAllocator;
+
+    public WindowsProtectedMemoryAllocatorTest()
     {
-        private readonly WindowsProtectedMemoryAllocatorLLP64 windowsProtectedMemoryAllocator;
+        Trace.Listeners.Clear();
+        var consoleListener = new ConsoleTraceListener();
+        Trace.Listeners.Add(consoleListener);
 
-        public WindowsProtectedMemoryAllocatorTest()
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>
         {
-            Trace.Listeners.Clear();
-            var consoleListener = new ConsoleTraceListener();
-            Trace.Listeners.Add(consoleListener);
+            { "minimumWorkingSetSize", "33554430"},
+            { "maximumWorkingSetSize", "67108860"},
+        }).Build();
 
-            var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>
-            {
-                { "minimumWorkingSetSize", "33554430"},
-                { "maximumWorkingSetSize", "67108860"},
-            }).Build();
-
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                windowsProtectedMemoryAllocator = new WindowsProtectedMemoryAllocatorVirtualAlloc(configuration);
-            }
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            windowsProtectedMemoryAllocator = new WindowsProtectedMemoryAllocatorVirtualAlloc(configuration);
         }
+    }
 
-        public void Dispose()
+    public void Dispose()
+    {
+        windowsProtectedMemoryAllocator?.Dispose();
+    }
+
+    [SkippableFact]
+    private void TestAllocSuccess()
+    {
+        Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
+
+        IntPtr pointer = windowsProtectedMemoryAllocator.Alloc(1);
+        try
         {
-            windowsProtectedMemoryAllocator?.Dispose();
+            // just do some sanity checks
+            Marshal.WriteByte(pointer, 0, 1);
+            Assert.Equal(1, Marshal.ReadByte(pointer, 0));
         }
-
-        [SkippableFact]
-        private void TestAllocSuccess()
+        finally
         {
-            Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
-
-            IntPtr pointer = windowsProtectedMemoryAllocator.Alloc(1);
-            try
-            {
-                // just do some sanity checks
-                Marshal.WriteByte(pointer, 0, 1);
-                Assert.Equal(1, Marshal.ReadByte(pointer, 0));
-            }
-            finally
-            {
-                windowsProtectedMemoryAllocator.Free(pointer, 1);
-            }
+            windowsProtectedMemoryAllocator.Free(pointer, 1);
         }
+    }
 
-        [SkippableFact]
-        private void TestZeroMemory()
+    [SkippableFact]
+    private void TestZeroMemory()
+    {
+        Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
+
+        byte[] origValue = { 1, 2, 3, 4 };
+        ulong length = (ulong)origValue.Length;
+
+        IntPtr pointer = windowsProtectedMemoryAllocator.Alloc(length);
+
+        try
         {
-            Skip.IfNot(RuntimeInformation.IsOSPlatform(OSPlatform.Windows));
+            Marshal.Copy(origValue, 0, pointer, (int)length);
 
-            byte[] origValue = { 1, 2, 3, 4 };
-            ulong length = (ulong)origValue.Length;
+            byte[] retValue = new byte[length];
+            Marshal.Copy(pointer, retValue, 0, (int)length);
+            Assert.Equal(origValue, retValue);
 
-            IntPtr pointer = windowsProtectedMemoryAllocator.Alloc(length);
-
-            try
-            {
-                Marshal.Copy(origValue, 0, pointer, (int)length);
-
-                byte[] retValue = new byte[length];
-                Marshal.Copy(pointer, retValue, 0, (int)length);
-                Assert.Equal(origValue, retValue);
-
-                windowsProtectedMemoryAllocator.ZeroMemory(pointer, length);
-                Marshal.Copy(pointer, retValue, 0, (int)length);
-                Assert.Equal(new byte[] { 0, 0, 0, 0 }, retValue);
-            }
-            finally
-            {
-                windowsProtectedMemoryAllocator.Free(pointer, length);
-            }
+            windowsProtectedMemoryAllocator.ZeroMemory(pointer, length);
+            Marshal.Copy(pointer, retValue, 0, (int)length);
+            Assert.Equal(new byte[] { 0, 0, 0, 0 }, retValue);
+        }
+        finally
+        {
+            windowsProtectedMemoryAllocator.Free(pointer, length);
         }
     }
 }

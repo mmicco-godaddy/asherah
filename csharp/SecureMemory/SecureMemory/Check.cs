@@ -1,56 +1,54 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.Libc;
 
-namespace GoDaddy.Asherah.SecureMemory
+namespace GoDaddy.Asherah.SecureMemory;
+
+public static class Check
 {
-    public static class Check
+    public static readonly IntPtr InvalidPointer = new IntPtr(-1);
+
+    public static void IntPtr(IntPtr intPointer, string methodName)
     {
-        public static readonly IntPtr InvalidPointer = new IntPtr(-1);
-
-        public static void IntPtr(IntPtr intPointer, string methodName)
+        if (intPointer == System.IntPtr.Zero || intPointer == InvalidPointer)
         {
-            if (intPointer == System.IntPtr.Zero || intPointer == InvalidPointer)
-            {
-                var errno = Marshal.GetLastWin32Error();
-                Debug.WriteLine($"****************** Check.IntPtr failed for {methodName} result: {intPointer} errno: {errno}");
-                throw new LibcOperationFailedException(methodName, intPointer.ToInt64());
-            }
+            var errno = Marshal.GetLastWin32Error();
+            Debug.WriteLine($"****************** Check.IntPtr failed for {methodName} result: {intPointer} errno: {errno}");
+            throw new LibcOperationFailedException(methodName, intPointer.ToInt64());
         }
+    }
 
-        public static void Zero(int result, string methodName)
+    public static void Zero(int result, string methodName)
+    {
+        if (result != 0)
         {
-            if (result != 0)
-            {
-                // NOTE: Even though this references Win32 it actually returns
-                // the last errno on non-Windows platforms.
-                var errno = Marshal.GetLastWin32Error();
-                Debug.WriteLine($"****************** Check.Zero failed for {methodName} result: {result} errno: {errno}");
-                throw new LibcOperationFailedException(methodName, result, errno);
-            }
+            // NOTE: Even though this references Win32 it actually returns
+            // the last errno on non-Windows platforms.
+            var errno = Marshal.GetLastWin32Error();
+            Debug.WriteLine($"****************** Check.Zero failed for {methodName} result: {result} errno: {errno}");
+            throw new LibcOperationFailedException(methodName, result, errno);
         }
+    }
 
-        public static void Result(int result, int expected, string methodName)
+    public static void Result(int result, int expected, string methodName)
+    {
+        if (result != expected)
         {
-            if (result != expected)
-            {
-                // NOTE: Even though this references Win32 it actually returns
-                // the last errno on non-Windows platforms.
-                var errno = Marshal.GetLastWin32Error();
-                Debug.WriteLine($"****************** Check.Result failed for {methodName} result: {result} expected: {expected} errno: {errno}");
-                throw new LibcOperationFailedException(methodName, result, errno);
-            }
+            // NOTE: Even though this references Win32 it actually returns
+            // the last errno on non-Windows platforms.
+            var errno = Marshal.GetLastWin32Error();
+            Debug.WriteLine($"****************** Check.Result failed for {methodName} result: {result} expected: {expected} errno: {errno}");
+            throw new LibcOperationFailedException(methodName, result, errno);
         }
+    }
 
-        public static void Zero(int result, string methodName, Exception exceptionInProgress)
+    public static void Zero(int result, string methodName, Exception exceptionInProgress)
+    {
+        if (result != 0)
         {
-            if (result != 0)
-            {
-                var errno = Marshal.GetLastWin32Error();
-                Debug.WriteLine($"****************** Check.Zero failed for {methodName} result: {result} errno: {errno}");
-                throw new LibcOperationFailedException(methodName, result, exceptionInProgress);
-            }
+            var errno = Marshal.GetLastWin32Error();
+            Debug.WriteLine($"****************** Check.Zero failed for {methodName} result: {result} errno: {errno}");
+            throw new LibcOperationFailedException(methodName, result, exceptionInProgress);
         }
     }
 }

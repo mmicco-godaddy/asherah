@@ -7,96 +7,95 @@ using GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.MacOS;
 using GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.Windows;
 using GoDaddy.Asherah.SecureMemory.SecureMemoryImpl;
 using Microsoft.Extensions.Configuration;
-using Xunit;
 
-namespace GoDaddy.Asherah.SecureMemory.Tests.ProtectedMemoryImpl
+namespace GoDaddy.Asherah.SecureMemory.Tests.ProtectedMemoryImpl;
+
+[ExcludeFromCodeCoverage]
+[Collection("Logger Fixture collection")]
+public class ProtectedMemoryAllocatorTest : IDisposable
 {
-    [Collection("Logger Fixture collection")]
-    public class ProtectedMemoryAllocatorTest : IDisposable
+    private static readonly IntPtr InvalidPointer = new IntPtr(-1);
+
+    private readonly ISecureMemoryAllocator protectedMemoryAllocator;
+    private IConfiguration configuration;
+
+    public ProtectedMemoryAllocatorTest()
     {
-        private static readonly IntPtr InvalidPointer = new IntPtr(-1);
+        Trace.Listeners.Clear();
+        var consoleListener = new ConsoleTraceListener();
+        Trace.Listeners.Add(consoleListener);
 
-        private readonly ISecureMemoryAllocator protectedMemoryAllocator;
-        private IConfiguration configuration;
-
-        public ProtectedMemoryAllocatorTest()
+        configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
         {
-            Trace.Listeners.Clear();
-            var consoleListener = new ConsoleTraceListener();
-            Trace.Listeners.Add(consoleListener);
+            {"heapSize", "32000"},
+            {"minimumAllocationSize", "128"},
+        }).Build();
 
-            configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()
-            {
-                {"heapSize", "32000"},
-                {"minimumAllocationSize", "128"},
-            }).Build();
+        Debug.WriteLine("ProtectedMemoryAllocatorTest ctor");
+        protectedMemoryAllocator = GetPlatformAllocator(configuration);
+    }
 
-            Debug.WriteLine("ProtectedMemoryAllocatorTest ctor");
-            protectedMemoryAllocator = GetPlatformAllocator(configuration);
+    public void Dispose()
+    {
+        Debug.WriteLine("ProtectedMemoryAllocatorTest.Dispose");
+        protectedMemoryAllocator.Dispose();
+    }
+
+    internal ISecureMemoryAllocator GetPlatformAllocator(IConfiguration configuration)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            return new LinuxProtectedMemoryAllocatorLP64();
         }
-
-        public void Dispose()
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            Debug.WriteLine("ProtectedMemoryAllocatorTest.Dispose");
-            protectedMemoryAllocator.Dispose();
+            return new MacOSProtectedMemoryAllocatorLP64();
         }
-
-        internal ISecureMemoryAllocator GetPlatformAllocator(IConfiguration configuration)
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                return new LinuxProtectedMemoryAllocatorLP64();
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                return new MacOSProtectedMemoryAllocatorLP64();
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                return new WindowsProtectedMemoryAllocatorVirtualAlloc(configuration);
-            }
-            else
-            {
-                throw new NotSupportedException("Cannot determine platform for testing");
-            }
+            return new WindowsProtectedMemoryAllocatorVirtualAlloc(configuration);
         }
-
-        private static void CheckIntPtr(IntPtr intPointer, string methodName)
+        else
         {
-            if (intPointer == IntPtr.Zero || intPointer == InvalidPointer)
-            {
-                throw new LibcOperationFailedException(methodName, intPointer.ToInt64());
-            }
+            throw new NotSupportedException("Cannot determine platform for testing");
         }
+    }
 
-        [Fact]
-        private void TestTwoAllocatorInstances()
+    private static void CheckIntPtr(IntPtr intPointer, string methodName)
+    {
+        if (intPointer == IntPtr.Zero || intPointer == InvalidPointer)
         {
-            var allocator1 = GetPlatformAllocator(configuration);
-            var allocator2 = GetPlatformAllocator(configuration);
-            Assert.NotNull(allocator1);
-            Assert.NotNull(allocator2);
-            allocator1.Dispose();
-            allocator2.Dispose();
+            throw new LibcOperationFailedException(methodName, intPointer.ToInt64());
         }
+    }
 
-        [Fact]
-        private void TestAllocSuccess()
+    [Fact]
+    private void TestTwoAllocatorInstances()
+    {
+        var allocator1 = GetPlatformAllocator(configuration);
+        var allocator2 = GetPlatformAllocator(configuration);
+        Assert.NotNull(allocator1);
+        Assert.NotNull(allocator2);
+        allocator1.Dispose();
+        allocator2.Dispose();
+    }
+
+    [Fact]
+    private void TestAllocSuccess()
+    {
+        Debug.WriteLine("ProtectedMemoryAllocatorTest.TestAllocSuccess");
+        IntPtr pointer = protectedMemoryAllocator.Alloc(1);
+        CheckIntPtr(pointer, "ISecureMemoryAllocator.Alloc");
+
+        try
         {
-            Debug.WriteLine("ProtectedMemoryAllocatorTest.TestAllocSuccess");
-            IntPtr pointer = protectedMemoryAllocator.Alloc(1);
-            CheckIntPtr(pointer, "ISecureMemoryAllocator.Alloc");
-
-            try
-            {
-                // just do some sanity checks
-                Marshal.WriteByte(pointer, 0, 1);
-                Assert.Equal(1, Marshal.ReadByte(pointer, 0));
-            }
-            finally
-            {
-                protectedMemoryAllocator.Free(pointer, 1);
-            }
+            // just do some sanity checks
+            Marshal.WriteByte(pointer, 0, 1);
+            Assert.Equal(1, Marshal.ReadByte(pointer, 0));
+        }
+        finally
+        {
+            protectedMemoryAllocator.Free(pointer, 1);
         }
     }
 }

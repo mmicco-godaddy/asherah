@@ -7,88 +7,86 @@ using GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.Libc;
 [assembly: InternalsVisibleTo("SecureMemory.Tests")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
 
-namespace GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.MacOS
+namespace GoDaddy.Asherah.SecureMemory.ProtectedMemoryImpl.MacOS;
+/*
+ * MacOS protected memory implementation supports:
+ *
+ * mmap(MAP_PRIVATE | MAP_ANON) - Private anonymous
+ * mlock() - Locked (no swap)
+ * setrlimit(RLIMIT_CORE, 0) - Globally disable core dumps
+ * madvise(MADV_ZERO_WIRED_PAGES) - Request that the pages are zeroed before deallocation
+ */
+
+internal class MacOSProtectedMemoryAllocatorLP64 : LibcProtectedMemoryAllocatorLP64
 {
-    /*
-     * MacOS protected memory implementation supports:
-     *
-     * mmap(MAP_PRIVATE | MAP_ANON) - Private anonymous
-     * mlock() - Locked (no swap)
-     * setrlimit(RLIMIT_CORE, 0) - Globally disable core dumps
-     * madvise(MADV_ZERO_WIRED_PAGES) - Request that the pages are zeroed before deallocation
-     */
+    private readonly MacOSLibcLP64 libc;
 
-    internal class MacOSProtectedMemoryAllocatorLP64 : LibcProtectedMemoryAllocatorLP64
+    public MacOSProtectedMemoryAllocatorLP64()
+        : base(new MacOSLibcLP64())
     {
-        private readonly MacOSLibcLP64 libc;
+        libc = (MacOSLibcLP64)GetLibc();
+        DisableCoreDumpGlobally();
+    }
 
-        public MacOSProtectedMemoryAllocatorLP64()
-            : base(new MacOSLibcLP64())
+    public MacOSProtectedMemoryAllocatorLP64(MacOSLibcLP64 libc)
+        : base(libc)
+    {
+        this.libc = libc;
+    }
+
+    public override void Dispose()
+    {
+    }
+
+    internal override int GetRlimitCoreResource()
+    {
+        return (int)RlimitResource.RLIMIT_CORE;
+    }
+
+    // Platform specific blocking memory from core dump
+    internal override void SetNoDump(IntPtr protectedMemory, ulong length)
+    {
+        // MacOS doesn't have madvise(MAP_DONTDUMP) so we have to disable core dumps globally
+        if (!AreCoreDumpsGloballyDisabled())
         {
-            libc = (MacOSLibcLP64)GetLibc();
             DisableCoreDumpGlobally();
-        }
-
-        public MacOSProtectedMemoryAllocatorLP64(MacOSLibcLP64 libc)
-            : base(libc)
-        {
-            this.libc = libc;
-        }
-
-        public override void Dispose()
-        {
-        }
-
-        internal override int GetRlimitCoreResource()
-        {
-            return (int)RlimitResource.RLIMIT_CORE;
-        }
-
-        // Platform specific blocking memory from core dump
-        internal override void SetNoDump(IntPtr protectedMemory, ulong length)
-        {
-            // MacOS doesn't have madvise(MAP_DONTDUMP) so we have to disable core dumps globally
             if (!AreCoreDumpsGloballyDisabled())
             {
-                DisableCoreDumpGlobally();
-                if (!AreCoreDumpsGloballyDisabled())
-                {
-                    throw new SystemException("Failed to disable core dumps");
-                }
+                throw new SystemException("Failed to disable core dumps");
             }
         }
+    }
 
-        // These flags are platform specific in their integer values
-        internal override int GetProtRead()
-        {
-            return (int)MmapProts.PROT_READ;
-        }
+    // These flags are platform specific in their integer values
+    internal override int GetProtRead()
+    {
+        return (int)MmapProts.PROT_READ;
+    }
 
-        internal override int GetProtReadWrite()
-        {
-            return (int)(MmapProts.PROT_READ | MmapProts.PROT_WRITE);
-        }
+    internal override int GetProtReadWrite()
+    {
+        return (int)(MmapProts.PROT_READ | MmapProts.PROT_WRITE);
+    }
 
-        internal override int GetProtNoAccess()
-        {
-            return (int)MmapProts.PROT_NONE;
-        }
+    internal override int GetProtNoAccess()
+    {
+        return (int)MmapProts.PROT_NONE;
+    }
 
-        internal override int GetPrivateAnonymousFlags()
-        {
-            return (int)(MmapFlags.MAP_PRIVATE | MmapFlags.MAP_ANON);
-        }
+    internal override int GetPrivateAnonymousFlags()
+    {
+        return (int)(MmapFlags.MAP_PRIVATE | MmapFlags.MAP_ANON);
+    }
 
-        internal override int GetMemLockLimit()
-        {
-            return (int)RlimitResource.RLIMIT_MEMLOCK;
-        }
+    internal override int GetMemLockLimit()
+    {
+        return (int)RlimitResource.RLIMIT_MEMLOCK;
+    }
 
-        protected override void ZeroMemory(IntPtr pointer, ulong length)
-        {
-            // This differs on different platforms
-            // MacOS has memset_s which is standardized and secure
-            libc.memset_s(pointer, length, 0, length);
-        }
+    protected override void ZeroMemory(IntPtr pointer, ulong length)
+    {
+        // This differs on different platforms
+        // MacOS has memset_s which is standardized and secure
+        libc.memset_s(pointer, length, 0, length);
     }
 }

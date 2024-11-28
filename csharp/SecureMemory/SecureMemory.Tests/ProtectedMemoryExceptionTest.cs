@@ -1,17 +1,15 @@
-using Xunit;
+namespace GoDaddy.Asherah.SecureMemory.Tests;
 
-namespace GoDaddy.Asherah.SecureMemory.Tests
+[ExcludeFromCodeCoverage]
+[Collection("Logger Fixture collection")]
+public class SecureMemoryExceptionTest
 {
-    [Collection("Logger Fixture collection")]
-    public class SecureMemoryExceptionTest
-    {
-        private const string Message = "Failure message";
+    private const string Message = "Failure message";
 
-        [Fact]
-        private void SecureMemoryExceptionConstructorTest()
-        {
-            SecureMemoryException exception = new SecureMemoryException(Message);
-            Assert.Equal(Message, exception.Message);
-        }
+    [Fact]
+    private void SecureMemoryExceptionConstructorTest()
+    {
+        SecureMemoryException exception = new SecureMemoryException(Message);
+        Assert.Equal(Message, exception.Message);
     }
 }

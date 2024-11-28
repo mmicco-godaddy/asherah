@@ -1,10 +1,9 @@
-namespace GoDaddy.Asherah.SecureMemory
+namespace GoDaddy.Asherah.SecureMemory;
+
+public class SecureMemoryAllocationFailedException : SecureMemoryException
 {
-    public class SecureMemoryAllocationFailedException : SecureMemoryException
+    public SecureMemoryAllocationFailedException(string message)
+        : base(message)
     {
-        public SecureMemoryAllocationFailedException(string message)
-            : base(message)
-        {
-        }
     }
 }

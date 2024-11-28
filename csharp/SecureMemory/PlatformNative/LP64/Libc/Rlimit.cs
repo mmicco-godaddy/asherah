@@ -3,6 +3,9 @@ using System.Diagnostics.CodeAnalysis;
 // Configure types for LP64
 using rlim_t = System.UInt64;
 
+// Disable warning for naming convention to allow native conventions
+#pragma warning disable CS8981
+
 // ReSharper disable NotAccessedField.Global
 // ReSharper disable UnusedMember.Global
 // ReSharper disable InconsistentNaming
